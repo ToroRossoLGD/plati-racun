@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "PlatiRacun",
-    "slug": "PlatiRacun",
+    "name": "Plati račun",
+    "slug": "plati-racun",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
