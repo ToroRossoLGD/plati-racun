@@ -1,30 +1,50 @@
 # Plati račun
 
-A standalone app for everyday needs, built with React Native, Expo, and TypeScript, with local storage via AsyncStorage. Track bills, payment amounts, and payment dates across five locations. The interface is in Serbian.
+A standalone app for everyday needs, built with React Native, Expo, Expo Router, and TypeScript, with local storage via AsyncStorage. The interface is in Serbian.
 
-A React Native / Expo app for tracking personal bills across five locations: Ilije Stojadinovića, Pere Velimirovića, 2. Srpske, More, and Petrovac.
+## Bill tracking
 
-Each location starts with four bills: Electricity, Water, Internet, and Utilities (displayed in Serbian). You can add your own bills, edit their names and amounts in RSD, enter payment dates, and mark bills as paid. Checking a bill automatically sets today's date if no date has been entered. Unchecking it clears the date while keeping the amount. The screens show total amounts and the number of paid bills.
+| Location | Bills | Tracking |
+| --- | --- | --- |
+| Ilije Stojadinovića | Infostan, Electricity, Internet, UNIQA | Payment amount, date, and paid status |
+| Pere Velimirovića | Electricity, Internet | Whether the bill has been sent to the person responsible for payment |
+| 2. Srpske armije | Electricity, Gile, Building Manager, Yettel, Infostan | Payment amount, date, and paid status |
+| More | Electricity | Payment amount, date, and paid status |
+| Petrovac | Electricity, Utilities | Payment amount, date, and paid status |
+
+For payment locations, you can edit bill names, enter amounts in RSD and payment dates, and add bills. Marking a bill as paid sets today's date if no date is entered. Unchecking it clears the date and keeps the amount. Forwarded bills are excluded from payment totals.
+
+## Tax tracking
+
+The red **Porez** button on the home screen opens tax tracking for all five locations.
+
+- Ilije Stojadinovića, Pere Velimirovića, and 2. Srpske armije each have four quarterly payments with configured deadlines of February 15, May 15, August 15, and November 15.
+- Petrovac has two payments without preset deadlines.
+- More has one annual payment without a preset deadline.
+- Each payment stores an amount in RSD and a payment date, with a **Today's date** shortcut.
+- Completed payments are summed per location and across all locations for the selected year. Records for different years are kept separately.
+- Deadline reminders appear inside the app; phone notifications are not implemented.
 
 ## Running on your phone
 
-1. Install a version of Expo Go that supports Expo SDK 57 on your phone.
-2. In this project folder, run `npm install` if dependencies are not installed, then run `npm start`.
+1. Install Expo Go with support for Expo SDK 57 on your phone.
+2. Run `npm install` in this project folder, then `npm start`.
 3. Connect your computer and phone to the same local network.
-4. Scan the QR code displayed in the terminal using Expo Go on Android or the Camera app on iPhone.
+4. Scan the terminal's QR code with Expo Go on Android or the Camera app on iPhone.
 
-If Expo Go cannot reach your computer over the local network, run `npm run start:tunnel`. Open the new `exp://...exp.direct` address from the terminal in Expo Go. Both your computer and phone need internet access when using the tunnel. The address may change when the server restarts.
+If the local connection fails, run `npm run start:tunnel` and open the displayed `exp://...exp.direct` address in Expo Go. Both devices need internet access for the tunnel. Keep the development server running while previewing the app. The tunnel address may change after a restart.
 
-Setup instructions and supported versions: https://docs.expo.dev/get-started/set-up-your-environment/
+[Expo environment setup](https://docs.expo.dev/get-started/set-up-your-environment/)
 
 ## Data storage
 
-Data is automatically saved locally using AsyncStorage. Bill tracking does not require an account or a backend server. Uninstalling the app or clearing its data also deletes your records. This version stores the current set of bills for each location; monthly history has not yet been implemented. The app records payments and does not perform bank transfers.
+Bills and tax records are stored locally using AsyncStorage. No backend account is needed for record keeping. Clearing the app's data or uninstalling it deletes local records. Existing bill data is migrated by bill name, with the original storage key retained as a backup. Tax records use a separate storage key.
+
+Bills currently represent the current set of obligations; monthly bill history is not implemented. The app records payments and does not perform bank transfers. Standalone Android APK or iOS installation requires a development or production build; this project is currently set up for Expo Go previews.
 
 ## Validation
 
-- `npx tsc --noEmit`
-- `node --test tests/bills.test.mjs`
+- `npm run lint`
+- `npm run typecheck`
+- `npm test`
 - `npx expo export --platform android --output-dir dist`
-
-A standalone Android APK or iOS installation requires a development or production build. The current version is set up for previewing in Expo Go.

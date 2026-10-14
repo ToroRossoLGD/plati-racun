@@ -1,45 +1,45 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Link, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Bill, Location, STORAGE_KEY, amountNumber, initialLocations, isLocations, today, validAmount, validDate } from '../bills';
+import { Bill, Location, LEGACY_STORAGE_KEY, STORAGE_KEY, amountNumber, initialLocations, isForwarding, isLocations, migrateLocations, today, validAmount, validDate } from '../bills';
 
 const money = (n: number) => n.toLocaleString('sr-RS', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let billWrites = Promise.resolve();
+function queueBillWrite(write: () => Promise<void>) {
+  billWrites = billWrites.then(write);
+}
 export default function Main() {
   const [locations, setLocations] = useState<Location[]>(initialLocations);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const { id: selected } = useLocalSearchParams<{ id?: string }>();
   const [draft, setDraft] = useState<Bill | null>(null);
   const [error, setError] = useState('');
-  const writes = useRef(Promise.resolve());
   const location = locations.find(l => l.id === selected);
+  const forwarding = !!location && isForwarding(location);
   async function load() {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      await billWrites;
+      const current = await AsyncStorage.getItem(STORAGE_KEY);
+      const raw = current ?? await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
       if (raw) {
         const data: unknown = JSON.parse(raw);
         if (!isLocations(data)) throw new Error('Invalid data');
-        setLocations(data);
+        const next = current ? data : migrateLocations(data);
+        if (!current) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        setLocations(next);
       }
       setReady(true);
     } catch { setLoadError(true); }
   }
-  // State updates in load happen after asynchronous storage hydration.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, []);
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (selected) { setSelected(null); return true; }
-      return false;
-    });
-    return () => sub.remove();
-  }, [selected]);
+  useFocusEffect(useCallback(() => { void load(); }, []));
   function persist(next: Location[]) {
     setLocations(next);
-    writes.current = writes.current.then(async () => {
+    queueBillWrite(async () => {
       try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSaveError(false); }
       catch { setSaveError(true); }
     });
@@ -48,7 +48,7 @@ export default function Main() {
     persist(locations.map(l => l.id === selected ? { ...l, bills: l.bills.some(b => b.id === bill.id) ? l.bills.map(b => b.id === bill.id ? bill : b) : [...l.bills, bill] } : l));
   }
   function toggle(bill: Bill) {
-    updateBill({ ...bill, paid: !bill.paid, date: !bill.paid ? bill.date || today() : '' });
+    updateBill({ ...bill, paid: !bill.paid, date: forwarding ? '' : !bill.paid ? bill.date || today() : '' });
   }
   function saveDraft() {
     if (!draft) return;
@@ -58,7 +58,7 @@ export default function Main() {
     updateBill({ ...draft, name: draft.name.trim(), date: draft.paid ? draft.date || today() : draft.date });
     setDraft(null);
   }
-  const allBills = locations.flatMap(l => l.bills);
+  const allBills = locations.filter(l => !isForwarding(l)).flatMap(l => l.bills);
   const bills = location?.bills || allBills;
   const paid = bills.filter(b => b.paid);
   const total = bills.reduce((sum, b) => sum + amountNumber(b.amount), 0);
@@ -68,18 +68,19 @@ export default function Main() {
     {!ready ? <View style={s.loading}>{loadError ? <><Text style={s.title}>Podaci nisu učitani</Text><Text style={s.muted}>Sačuvani računi nisu menjani. Pokušaj ponovo.</Text><Pressable style={s.primary} onPress={() => { setLoadError(false); void load(); }}><Text style={s.primaryText}>Pokušaj ponovo</Text></Pressable></> : <ActivityIndicator color="#166A57" size="large" />}</View> : <>
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
       <View style={s.top}><Text style={s.brand}>PR / PLATI RAČUN</Text><View style={s.badge}><Text style={s.badgeText}>LIČNA EVIDENCIJA</Text></View></View>
-      {location && <Pressable onPress={() => setSelected(null)} accessibilityRole="button" style={s.back}><Text style={s.backText}>← Sve lokacije</Text></Pressable>}
+      {location && <Pressable onPress={() => router.replace('/')} accessibilityRole="button" style={s.back}><Text style={s.backText}>← Sve lokacije</Text></Pressable>}
       <Text style={s.title}>{location ? location.name : 'Računi pod kontrolom.'}</Text>
-      <Text style={s.subtitle}>{location ? 'Označi plaćeno i sačuvaj detalje svakog računa.' : 'Pet lokacija. Sve obaveze na jednom mestu.'}</Text>
-      <View style={s.summary}><Text style={s.summaryLabel}>{location ? 'UKUPAN IZNOS ZA LOKACIJU' : 'UKUPAN IZNOS RAČUNA'}</Text><Text style={s.total}>{money(total)} <Text style={s.currency}>RSD</Text></Text><Text style={s.summaryNote}>{paid.length} od {bills.length} računa plaćeno</Text><Text style={s.summaryNote}>Preostalo {money(bills.filter(b => !b.paid).reduce((sum, b) => sum + amountNumber(b.amount), 0))} RSD</Text><View style={s.track}><View style={[s.progress, { width: `${bills.length ? paid.length / bills.length * 100 : 0}%` }]} /></View></View>
+      <Text style={s.subtitle}>{location ? forwarding ? 'Označi kada pošalješ račun osobi koja treba da plati.' : 'Označi plaćeno i sačuvaj detalje svakog računa.' : 'Pet lokacija. Sve obaveze na jednom mestu.'}</Text>
+      <View style={s.summary}>{forwarding ? <><Text style={s.summaryLabel}>SLANJE RAČUNA</Text><Text style={s.total}>{paid.length} / {bills.length}</Text><Text style={s.summaryNote}>računa poslato osobi koja plaća</Text></> : <><Text style={s.summaryLabel}>{location ? 'UKUPAN IZNOS ZA LOKACIJU' : 'UKUPAN IZNOS RAČUNA'}</Text><Text style={s.total}>{money(total)} <Text style={s.currency}>RSD</Text></Text><Text style={s.summaryNote}>{paid.length} od {bills.length} računa plaćeno</Text><Text style={s.summaryNote}>Preostalo {money(bills.filter(b => !b.paid).reduce((sum, b) => sum + amountNumber(b.amount), 0))} RSD</Text></>}<View style={s.track}><View style={[s.progress, { width: `${bills.length ? paid.length / bills.length * 100 : 0}%` }]} /></View></View>
+      {!location && <Link href="/tax" asChild><Pressable style={{ backgroundColor: "#C73535", paddingVertical: 24, borderRadius: 18, alignItems: "center", marginTop: 18 }} accessibilityRole="button"><Text style={{ color: "#fff", fontSize: 24, fontWeight: "800" }}>Porez</Text></Pressable></Link>}
       {saveError && <Pressable style={s.errorBox} onPress={() => persist(locations)}><Text style={s.error}>Čuvanje nije uspelo. Dodirni ovde da pokušaš ponovo.</Text></Pressable>}
       <View style={s.section}><Text style={s.sectionTitle}>{location ? 'Računi' : 'Tvoje lokacije'}</Text><Text style={s.muted}>{location ? `${bills.length} stavki` : '5 lokacija'}</Text></View>
       {!location ? locations.map((l, i) => {
         const count = l.bills.filter(b => b.paid).length;
-        return <Pressable key={l.id} accessibilityRole="button" accessibilityLabel={`Otvori ${l.name}`} onPress={() => setSelected(l.id)} style={({ pressed }) => [s.locationCard, pressed && s.pressed]}><View style={s.number}><Text style={s.numberText}>{String(i + 1).padStart(2, '0')}</Text></View><View style={s.flex}><Text style={s.cardTitle}>{l.name}</Text><Text style={s.muted}>{count}/{l.bills.length} plaćeno · {money(l.bills.reduce((sum, b) => sum + amountNumber(b.amount), 0))} RSD</Text></View><Text style={s.arrow}>↗</Text></Pressable>;
+        return <Pressable key={l.id} accessibilityRole="button" accessibilityLabel={`Otvori ${l.name}`} onPress={() => router.push({ pathname: '/bills/[id]', params: { id: l.id } })} style={({ pressed }) => [s.locationCard, pressed && s.pressed]}><View style={s.number}><Text style={s.numberText}>{String(i + 1).padStart(2, '0')}</Text></View><View style={s.flex}><Text style={s.cardTitle}>{l.name}</Text><Text style={s.muted}>{isForwarding(l) ? `${count}/${l.bills.length} poslato` : `${count}/${l.bills.length} plaćeno · ${money(l.bills.reduce((sum, b) => sum + amountNumber(b.amount), 0))} RSD`}</Text></View><Text style={s.arrow}>↗</Text></Pressable>;
       }) : <>
-        {location.bills.map(b => <View key={b.id} style={s.billCard}><View style={s.billTop}><Pressable accessibilityRole="checkbox" accessibilityState={{ checked: b.paid }} accessibilityLabel={`${b.name}, plaćeno`} onPress={() => toggle(b)} style={[s.checkbox, b.paid && s.checked]}><Text style={s.checkmark}>{b.paid ? '✓' : ''}</Text></Pressable><Pressable style={s.flex} onPress={() => openDraft(b)} accessibilityRole="button"><Text style={s.cardTitle}>{b.name}</Text><Text style={[s.state, b.paid && s.paidText]}>{b.paid ? 'Plaćeno' : 'Za plaćanje'}</Text></Pressable><Pressable onPress={() => openDraft(b)} style={s.edit}><Text style={s.backText}>Uredi</Text></Pressable></View><View style={s.billDetails}><Text style={s.amount}>{b.amount ? `${money(amountNumber(b.amount))} RSD` : 'Iznos nije unet'}</Text><Text style={s.muted}>{b.date ? `Datum: ${b.date}` : 'Datum nije unet'}</Text></View></View>)}
-        <Pressable style={s.add} accessibilityRole="button" onPress={() => openDraft({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', paid: false, amount: '', date: '' })}><Text style={s.backText}>＋ Dodaj račun</Text></Pressable>
+        {location.bills.map(b => <View key={b.id} style={s.billCard}><View style={s.billTop}><Pressable accessibilityRole="checkbox" accessibilityState={{ checked: b.paid }} accessibilityLabel={`${b.name}, ${forwarding ? "račun poslat" : "plaćeno"}`} onPress={() => toggle(b)} style={[s.checkbox, b.paid && s.checked]}><Text style={s.checkmark}>{b.paid ? '✓' : ''}</Text></Pressable><Pressable style={s.flex} onPress={() => forwarding ? toggle(b) : openDraft(b)} accessibilityRole="button"><Text style={s.cardTitle}>{b.name}</Text><Text style={[s.state, b.paid && s.paidText]}>{forwarding ? b.paid ? 'Račun poslat' : 'Račun nije poslat' : b.paid ? 'Plaćeno' : 'Za plaćanje'}</Text></Pressable>{!forwarding && <Pressable onPress={() => openDraft(b)} style={s.edit}><Text style={s.backText}>Uredi</Text></Pressable>}</View>{!forwarding && <View style={s.billDetails}><Text style={s.amount}>{b.amount ? `${money(amountNumber(b.amount))} RSD` : 'Iznos nije unet'}</Text><Text style={s.muted}>{b.date ? `Datum: ${b.date}` : 'Datum nije unet'}</Text></View>}</View>)}
+        {!forwarding && <Pressable style={s.add} accessibilityRole="button" onPress={() => openDraft({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', paid: false, amount: '', date: '' })}><Text style={s.backText}>＋ Dodaj račun</Text></Pressable>}
       </>}
       <Text style={s.footer}>Tvoja evidencija, uvek pri ruci.{'\n'}Podaci se čuvaju na ovom uređaju.</Text>
     </ScrollView>

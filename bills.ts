@@ -1,11 +1,23 @@
 export type Bill = { id: string; name: string; paid: boolean; amount: string; date: string };
 export type Location = { id: string; name: string; bills: Bill[] };
-export const STORAGE_KEY = 'plati-racun:v1';
+export const LEGACY_STORAGE_KEY = 'plati-racun:v1';
+export const STORAGE_KEY = 'plati-racun:v2';
+export const isForwarding = (location: Location) => location.id === '1';
 export function initialLocations(): Location[] {
-  return ['Ilije Stojadinovića', 'Pere Velimirovića', '2. Srpske', 'More', 'Petrovac'].map((name, index) => ({
+  const names = ['Ilije Stojadinovića', 'Pere Velimirovića', '2. Srpske armije', 'More', 'Petrovac'];
+  const bills = [ ['Infostan', 'Struja', 'Internet', 'UNIQA'], ['Struja', 'Internet'], ['Struja', 'Gile', 'Upravnik', 'Yettel', 'Infostan'], ['Struja'], ['Struja', 'Komunalije'] ];
+  return names.map((name, index) => ({
     id: String(index), name,
-    bills: ['Struja', 'Voda', 'Internet', 'Komunalije'].map((name, i) => ({ id: `${index}-${i}`, name, paid: false, amount: '', date: '' })),
+    bills: bills[index].map((name, i) => ({ id: `${index}-${i}`, name, paid: false, amount: '', date: '' })),
   }));
+}
+// Match by name: the original positional IDs refer to different bills now.
+// The v1 storage key remains untouched as a backup of all original records.
+export function migrateLocations(previous: Location[]): Location[] {
+  return initialLocations().map(location => ({ ...location, bills: location.bills.map(bill => {
+    const old = previous.find(l => l.id === location.id)?.bills.find(b => b.name.toLowerCase() === bill.name.toLowerCase());
+    return old && !isForwarding(location) ? { ...old, id: bill.id, name: bill.name } : bill;
+  }) }));
 }
 export function today(): string {
   const d = new Date();

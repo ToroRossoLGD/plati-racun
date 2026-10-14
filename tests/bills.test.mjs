@@ -1,6 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initialLocations, isLocations, validAmount, validDate, amountNumber } from '../bills.ts';
+import { initialLocations, isLocations, migrateLocations, isForwarding, validAmount, validDate, amountNumber } from '../bills.ts';
+
+test('location-specific lists and forwarding mode', () => {
+  const locations = initialLocations();
+  assert.deepEqual(locations.map(l => l.bills.map(b => b.name)), [
+    ['Infostan', 'Struja', 'Internet', 'UNIQA'], ['Struja', 'Internet'],
+    ['Struja', 'Gile', 'Upravnik', 'Yettel', 'Infostan'], ['Struja'], ['Struja', 'Komunalije'],
+  ]);
+  assert.deepEqual(locations.filter(isForwarding).map(l => l.name), ['Pere Velimirovića']);
+});
+test('migration preserves payments by name rather than positional ID', () => {
+  const old = initialLocations().map(l => ({ ...l, bills: ['Struja', 'Voda', 'Internet', 'Komunalije'].map((name, i) => ({ id: `${l.id}-${i}`, name, paid: true, amount: '1500,50', date: '13.10.2026.' })) }));
+  const snapshot = JSON.stringify(old);
+  const next = migrateLocations(old);
+  assert.equal(next[0].bills[0].name, 'Infostan');
+  assert.equal(next[0].bills[0].amount, '');
+  assert.equal(next[0].bills[1].name, 'Struja');
+  assert.equal(next[0].bills[1].amount, '1500,50');
+  assert.equal(next[0].bills[1].paid, true);
+  assert.equal(next[0].bills[1].date, '13.10.2026.');
+  assert.equal(next[1].bills.every(b => !b.paid && !b.amount && !b.date), true);
+  assert.equal(next[4].bills[1].amount, '1500,50');
+  assert.equal(JSON.stringify(old), snapshot);
+  assert.equal(isLocations(next), true);
+  assert.equal(new Set(next.flatMap(l => l.bills.map(b => b.id))).size, 14);
+});
 
 test('five independent locations survive storage serialization', () => {
   const data = initialLocations();
