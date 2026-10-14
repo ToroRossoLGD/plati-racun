@@ -6,9 +6,9 @@ A standalone app for everyday needs, built with React Native, Expo, Expo Router,
 
 | Location | Bills | Tracking |
 | --- | --- | --- |
-| Ilije Stojadinovića | Infostan, Electricity, Internet, UNIQA | Payment amount, date, and paid status |
-| Pere Velimirovića | Electricity, Internet | Whether the bill has been sent to the person responsible for payment |
-| 2. Srpske armije | Electricity, Gile, Building Manager, Yettel, Infostan | Payment amount, date, and paid status |
+| Street One | Infostan, Electricity, Internet, UNIQA | Payment amount, date, and paid status |
+| Street Two | Electricity, Internet | Whether the bill has been sent to the person responsible for payment |
+| Street Three | Electricity, Gile, Building Manager, Yettel, Infostan | Payment amount, date, and paid status |
 | More | Electricity | Payment amount, date, and paid status |
 | Petrovac | Electricity, Utilities | Payment amount, date, and paid status |
 
@@ -18,7 +18,7 @@ For payment locations, you can edit bill names, enter amounts in RSD and payment
 
 The red **Porez** button on the home screen opens tax tracking for all five locations.
 
-- Ilije Stojadinovića, Pere Velimirovića, and 2. Srpske armije each have four quarterly payments with configured deadlines of February 15, May 15, August 15, and November 15.
+- Street One, Street Two, and Street Three each have four quarterly payments with configured deadlines of February 15, May 15, August 15, and November 15.
 - Petrovac has two payments without preset deadlines.
 - More has one annual payment without a preset deadline.
 - Each payment stores an amount in RSD and a payment date, with a **Today's date** shortcut.
