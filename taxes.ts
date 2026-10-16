@@ -4,6 +4,17 @@ export type TaxLocation = { id: string; name: string; payments: TaxPayment[] };
 export type TaxRecords = Record<string, TaxLocation[]>;
 export const TAX_STORAGE_KEY = 'plati-racun:taxes:v1';
 export const DEADLINES = ['15.02.', '15.05.', '15.08.', '15.11.'];
+export function upcomingQuarterReminder(now = new Date()): { quarter: number; deadline: string; daysLeft: number } | null {
+  const year = now.getFullYear();
+  // Compare calendar dates, so daylight-saving changes cannot shift the count.
+  const current = Date.UTC(year, now.getMonth(), now.getDate());
+  for (let i = 0; i < DEADLINES.length; i++) {
+    const [day, month] = DEADLINES[i].split('.').map(Number);
+    const daysLeft = (Date.UTC(year, month - 1, day) - current) / 86400000;
+    if (daysLeft >= 0 && daysLeft <= 10) return { quarter: i + 1, deadline: `${DEADLINES[i]}${year}.`, daysLeft };
+  }
+  return null;
+}
 export function initialTaxes(): TaxLocation[] {
   return initialLocations().map(l => ({ id: l.id, name: l.name, payments: Array.from({ length: l.id === '3' ? 1 : l.id === '4' ? 2 : 4 }, (_, i) => ({ id: `${l.id}-${i}`, amount: '', date: '' })) }));
 }

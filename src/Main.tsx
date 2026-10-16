@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import TaxDeadlineBanner from './TaxDeadlineBanner';
 import { Bill, Location, LEGACY_STORAGE_KEY, STORAGE_KEY, amountNumber, initialLocations, isForwarding, isLocations, migrateLocations, today, validAmount, validDate } from '../bills';
 
 const money = (n: number) => n.toLocaleString('sr-RS', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -67,6 +68,7 @@ export default function Main() {
     <StatusBar style="dark" />
     {!ready ? <View style={s.loading}>{loadError ? <><Text style={s.title}>Podaci nisu učitani</Text><Text style={s.muted}>Sačuvani računi nisu menjani. Pokušaj ponovo.</Text><Pressable style={s.primary} onPress={() => { setLoadError(false); void load(); }}><Text style={s.primaryText}>Pokušaj ponovo</Text></Pressable></> : <ActivityIndicator color="#166A57" size="large" />}</View> : <>
     <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
+      {!location && <TaxDeadlineBanner />}
       <View style={s.top}><Text style={s.brand}>PR / PLATI RAČUN</Text><View style={s.badge}><Text style={s.badgeText}>LIČNA EVIDENCIJA</Text></View></View>
       {location && <Pressable onPress={() => router.replace('/')} accessibilityRole="button" style={s.back}><Text style={s.backText}>← Sve lokacije</Text></Pressable>}
       <Text style={s.title}>{location ? location.name : 'Računi pod kontrolom.'}</Text>

@@ -1,6 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initialTaxes, taxTotal, taxDeadline, taxReminder, validTaxes } from '../taxes.ts';
+import { initialTaxes, taxTotal, taxDeadline, taxReminder, upcomingQuarterReminder, validTaxes } from '../taxes.ts';
+
+test('home reminder covers each quarter from 10 days before through deadline day', () => {
+  for (const [quarter, month] of [[1, 1], [2, 4], [3, 7], [4, 10]]) {
+    assert.equal(upcomingQuarterReminder(new Date(2026, month, 4, 23, 59)), null);
+    for (let day = 5; day <= 15; day++) {
+      const reminder = upcomingQuarterReminder(new Date(2026, month, day, 23, 59));
+      assert.equal(reminder.quarter, quarter);
+      assert.equal(reminder.daysLeft, 15 - day);
+    }
+    assert.equal(upcomingQuarterReminder(new Date(2026, month, 16)), null);
+  }
+});
+test('home reminder uses the current calendar year and updates across midnight', () => {
+  assert.equal(upcomingQuarterReminder(new Date(2026, 11, 31)), null);
+  assert.equal(upcomingQuarterReminder(new Date(2027, 1, 5)).deadline, '15.02.2027.');
+  assert.equal(upcomingQuarterReminder(new Date(2026, 10, 14, 23, 59)).daysLeft, 1);
+  assert.equal(upcomingQuarterReminder(new Date(2026, 10, 15, 0, 0)).daysLeft, 0);
+});
 test('tax installments have the requested counts and exact supplied deadlines', () => {
   const l = initialTaxes();
   assert.deepEqual(l.map(l => l.payments.length), [4, 4, 4, 1, 2]);

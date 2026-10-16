@@ -24,6 +24,7 @@ The red **Porez** button on the home screen opens tax tracking for all five loca
 - Each payment stores an amount in RSD and a payment date, with a **Today's date** shortcut.
 - Completed payments are summed per location and across all locations for the selected year. Records for different years are kept separately.
 - Deadline reminders appear inside the app; phone notifications are not implemented.
+- A reminder at the very top of the home screen appears from 10 days before each quarterly deadline through the deadline day. It shows the remaining calendar days, refreshes at midnight and when returning to the app, and opens tax tracking when tapped.
 
 ## Running on your phone
 
