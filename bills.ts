@@ -3,6 +3,10 @@ export type Location = { id: string; name: string; bills: Bill[] };
 export const LEGACY_STORAGE_KEY = 'plati-racun:v1';
 export const STORAGE_KEY = 'plati-racun:v2';
 export const isForwarding = (location: Location) => location.id === '1';
+export function billDueDay(locationId: string, billName: string): 15 | 28 | null {
+  if (!['0', '1', '2'].includes(locationId)) return null;
+  return billName.trim().toLowerCase() === 'struja' ? 28 : 15;
+}
 export function initialLocations(): Location[] {
   const names = ['Ilije Stojadinovića', 'Pere Velimirovića', '2. Srpske armije', 'More', 'Petrovac'];
   const bills = [ ['Infostan', 'Struja', 'Internet', 'UNIQA'], ['Struja', 'Internet'], ['Struja', 'Gile', 'Upravnik', 'Yettel', 'Infostan'], ['Struja'], ['Struja', 'Komunalije'] ];

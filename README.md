@@ -14,7 +14,10 @@ A standalone app for everyday needs, built with React Native, Expo, Expo Router,
 
 For payment locations, you can edit bill names, enter amounts in RSD and payment dates, and add bills. Marking a bill as paid sets today's date if no date is entered. Unchecking it clears the date and keeps the amount. Forwarded bills are excluded from payment totals.
 
+Bills for Street One, Street Two, and Street Three are due by the 15th of each month, except electricity, which is due by the 28th. These recurring deadlines are displayed on each bill, including bills forwarded to someone else for payment. More and Petrovac have no preset monthly bill deadlines.
+
 ## Tax tracking
+
 
 The red **Porez** button on the home screen opens tax tracking for all five locations.
 

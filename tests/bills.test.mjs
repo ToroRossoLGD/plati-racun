@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initialLocations, isLocations, migrateLocations, isForwarding, validAmount, validDate, amountNumber } from '../bills.ts';
+import { initialLocations, isLocations, migrateLocations, isForwarding, billDueDay, validAmount, validDate, amountNumber } from '../bills.ts';
+
+test('monthly deadlines apply to every apartment bill, including forwarded and added bills', () => {
+  for (const location of initialLocations()) {
+    for (const bill of location.bills) {
+      assert.equal(billDueDay(location.id, bill.name), ['3', '4'].includes(location.id) ? null : bill.name === 'Struja' ? 28 : 15);
+    }
+  }
+  for (const id of ['0', '1', '2']) {
+    assert.equal(billDueDay(id, ' STRUJA '), 28);
+    assert.equal(billDueDay(id, 'Novi račun'), 15);
+  }
+  assert.equal(billDueDay('unknown', 'Struja'), null);
+});
 
 test('location-specific lists and forwarding mode', () => {
   const locations = initialLocations();
